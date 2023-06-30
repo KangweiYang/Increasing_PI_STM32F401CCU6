@@ -71,7 +71,7 @@ int64_t RMotorCount, LMotorCount;
 double RVelocity,LVelocity;                         //Cycle per minute
 double RVelBias, LVelBias;
 double RTargetVel, LTargetVel;
-double velKp=10.0, velKi=640.0;
+double velKp=800.0, velKi=1600.0;
 double RPWM=0, LPWM=0;
 /* USER CODE END PV */
 
@@ -83,19 +83,43 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+/**
+    * @breif    Start to computing the speeds of motors.
+    * @note     None
+    * @param    None
+    * @retval   None
+    */
 void MotorSpeedCompute_Start(){
     HAL_TIM_Base_Start_IT(&htim1);
 }
 
+/**
+    * @breif    Start to count the encoder.
+    * @note     None
+    * @param    None
+    * @retval   None
+    */
 void Encoder_Start(){
 
 }
 
+/**
+    * @breif    Start to generate PWM signals to control motors.
+    * @note     None
+    * @param    None
+    * @retval   None
+    */
 void MotorPWM_Start(){
     HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
     HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
 }
 
+/**
+    * @breif    Use incremental PI algorithm to renew the PWM signals.
+    * @note     None
+    * @param    None
+    * @retval   None
+    */
 void IncrementalPI(void) {
     static double RVelBias, LVelBias, LastRVelBias, LastLVelBias;
     RVelBias = RVelocity - RTargetVel;                //compute current bias
@@ -148,6 +172,9 @@ int main(void)
     MotorPWM_Start();
     MotorSpeedCompute_Start();
     RTargetVel = 80;
+
+        HAL_GPIO_WritePin(AIN1_GPIO_Port, AIN1_Pin, SET);
+        HAL_GPIO_WritePin(AIN2_GPIO_Port, AIN2_Pin, RESET);
     /* USER CODE END 2 */
 
     /* Infinite loop */
@@ -156,11 +183,11 @@ int main(void)
     {
         /* USER CODE END WHILE */
         cont++;
-        cont%=4000;
+        cont%=1000;
         if(cont == 0)   RTargetVel = 50;
-        if(cont == 2000)  RTargetVel = 150;
+        if(cont == 500)  RTargetVel = 230;
         IncrementalPI();
-        info("%lf, %lf, %lf, %d", RVelocity, RTargetVel, RPWM, cont);
+        printf("%lf, %lf, %lf, %d\r\n", RVelocity, RTargetVel, RPWM, cont);
         /* USER CODE BEGIN 3 */
     }
     /* USER CODE END 3 */
@@ -171,44 +198,44 @@ int main(void)
   */
 void SystemClock_Config(void)
 {
-  RCC_OscInitTypeDef RCC_OscInitStruct = {0};
-  RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
+    RCC_OscInitTypeDef RCC_OscInitStruct = {0};
+    RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
 
-  /** Configure the main internal regulator output voltage
-  */
-  __HAL_RCC_PWR_CLK_ENABLE();
-  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE2);
+    /** Configure the main internal regulator output voltage
+    */
+    __HAL_RCC_PWR_CLK_ENABLE();
+    __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE2);
 
-  /** Initializes the RCC Oscillators according to the specified parameters
-  * in the RCC_OscInitTypeDef structure.
-  */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
-  RCC_OscInitStruct.HSIState = RCC_HSI_ON;
-  RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
-  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
-  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
-  RCC_OscInitStruct.PLL.PLLM = 8;
-  RCC_OscInitStruct.PLL.PLLN = 84;
-  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
-  RCC_OscInitStruct.PLL.PLLQ = 4;
-  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
-  {
-    Error_Handler();
-  }
+    /** Initializes the RCC Oscillators according to the specified parameters
+    * in the RCC_OscInitTypeDef structure.
+    */
+    RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
+    RCC_OscInitStruct.HSIState = RCC_HSI_ON;
+    RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
+    RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+    RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
+    RCC_OscInitStruct.PLL.PLLM = 8;
+    RCC_OscInitStruct.PLL.PLLN = 84;
+    RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
+    RCC_OscInitStruct.PLL.PLLQ = 4;
+    if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
+    {
+        Error_Handler();
+    }
 
-  /** Initializes the CPU, AHB and APB buses clocks
-  */
-  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
-                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
-  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
-  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
-  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
+    /** Initializes the CPU, AHB and APB buses clocks
+    */
+    RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
+                                  |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
+    RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
+    RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
+    RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
+    RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
-  {
-    Error_Handler();
-  }
+    if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
+    {
+        Error_Handler();
+    }
 }
 
 /* USER CODE BEGIN 4 */
@@ -242,13 +269,13 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
   */
 void Error_Handler(void)
 {
-  /* USER CODE BEGIN Error_Handler_Debug */
+    /* USER CODE BEGIN Error_Handler_Debug */
     /* User can add his own implementation to report the HAL error return state */
     __disable_irq();
     while (1)
     {
     }
-  /* USER CODE END Error_Handler_Debug */
+    /* USER CODE END Error_Handler_Debug */
 }
 
 #ifdef  USE_FULL_ASSERT
